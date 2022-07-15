@@ -1,5 +1,5 @@
 import { JobQueue } from "./assigner";
-import fs from 'fs/promises';
+import fs from 'fs';
 import { Cast, Maybe } from "to-typed";
 
 export class FileJobQueue<T> implements JobQueue<T> {
@@ -9,9 +9,9 @@ export class FileJobQueue<T> implements JobQueue<T> {
         this.cast = Cast.asArrayOf<T>(itemCast);
     }
 
-    private async readFile(): Promise<string> {
+    private readFile(): string {
         try {
-            return await fs.readFile(this.path, 'utf8');
+            return fs.readFileSync(this.path, 'utf8');
         }
         catch (e: any) {
             if (e?.code === 'ENOENT') 
@@ -21,13 +21,13 @@ export class FileJobQueue<T> implements JobQueue<T> {
         }
     }
 
-    private async writeFile(data: T[]) {
-        await fs.writeFile(this.path, JSON.stringify(data, null, 2));
+    private writeFile(data: T[]) {
+        fs.writeFileSync(this.path, JSON.stringify(data, null, 2));
     }
 
-    private async castParse(): Promise<Maybe<T[]>> {
+    private castParse(): Maybe<T[]> {
         try {
-            const json = await this.readFile();
+            const json = this.readFile();
             return this.cast.cast(JSON.parse(json));
         }
         catch (e) {
@@ -35,26 +35,30 @@ export class FileJobQueue<T> implements JobQueue<T> {
         }
     }
     
-    async enqueue(task: T): Promise<void> {
-        const maybe = await this.castParse();
+    enqueue(task: T): Promise<void> {
+        const maybe = this.castParse();
 
         if (maybe.hasValue) {
             maybe.value.push(task);
-            await this.writeFile(maybe.value);
+            this.writeFile(maybe.value);
         }
         else
-            console.log('Could not parse file job data')
+            console.log('Could not parse file job data');
+    
+        return Promise.resolve();
     }
 
-    async dequeue(): Promise<T | undefined> {
-        const maybe = await this.castParse();
+    dequeue(): Promise<T | undefined> {
+        const maybe = this.castParse();
 
         if (maybe.hasValue) {
             const job = maybe.value.shift();
-            await this.writeFile(maybe.value);
-            return job;
+            this.writeFile(maybe.value);
+            return Promise.resolve(job);
         }
         else
             console.log('Could not parse file job data')
+        
+        return Promise.resolve(undefined);
     }
 }

@@ -1,13 +1,13 @@
-import fs from 'fs/promises';
+import fs from 'fs';
 import { Cast, Maybe } from "to-typed";
 export class FileJobQueue {
     constructor(path, itemCast) {
         this.path = path;
         this.cast = Cast.asArrayOf(itemCast);
     }
-    async readFile() {
+    readFile() {
         try {
-            return await fs.readFile(this.path, 'utf8');
+            return fs.readFileSync(this.path, 'utf8');
         }
         catch (e) {
             if (e?.code === 'ENOENT')
@@ -16,35 +16,37 @@ export class FileJobQueue {
                 throw e;
         }
     }
-    async writeFile(data) {
-        await fs.writeFile(this.path, JSON.stringify(data, null, 2));
+    writeFile(data) {
+        fs.writeFileSync(this.path, JSON.stringify(data, null, 2));
     }
-    async castParse() {
+    castParse() {
         try {
-            const json = await this.readFile();
+            const json = this.readFile();
             return this.cast.cast(JSON.parse(json));
         }
         catch (e) {
             return Maybe.nothing();
         }
     }
-    async enqueue(task) {
-        const maybe = await this.castParse();
+    enqueue(task) {
+        const maybe = this.castParse();
         if (maybe.hasValue) {
             maybe.value.push(task);
-            await this.writeFile(maybe.value);
+            this.writeFile(maybe.value);
         }
         else
             console.log('Could not parse file job data');
+        return Promise.resolve();
     }
-    async dequeue() {
-        const maybe = await this.castParse();
+    dequeue() {
+        const maybe = this.castParse();
         if (maybe.hasValue) {
             const job = maybe.value.shift();
-            await this.writeFile(maybe.value);
-            return job;
+            this.writeFile(maybe.value);
+            return Promise.resolve(job);
         }
         else
             console.log('Could not parse file job data');
+        return Promise.resolve(undefined);
     }
 }
