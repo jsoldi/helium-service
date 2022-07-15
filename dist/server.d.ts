@@ -1,7 +1,10 @@
 /// <reference path="../helium/types.d.ts" />
-import { Convert } from 'to-typed';
+import { Cast, Convert } from 'to-typed';
 export declare namespace Server {
-    function startServer(configPath: string): Promise<void>;
-    function get<E extends Endpoint>(name: E['name'], parse: Convert<E['in']>, callback: (value: E['in']) => Promise<E['out']>): Promise<import("express-serve-static-core").Express>;
-    function post<E extends Endpoint>(name: string, parse: Convert<E['in']>, callback: (value: E['in']) => Promise<E['out']>): import("express-serve-static-core").Express;
+    type Callback<E extends Endpoint> = (value: E['in']) => Promise<E['out']>;
+    export function startServer(configPath: string): Promise<void>;
+    export function get<E extends Endpoint>(name: E['name'], parse: Cast<E['in']>, callback: Callback<E>): import("express-serve-static-core").Express;
+    export function post<E extends Endpoint>(name: E['name'], parse: Cast<E['in']>, callback: Callback<E>): import("express-serve-static-core").Express;
+    export const noInput: Convert<{}>;
+    export {};
 }

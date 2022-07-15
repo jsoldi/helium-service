@@ -1,7 +1,7 @@
 /// <reference path="../helium/types.d.ts" />
 import express from 'express';
 import fs from 'fs/promises';
-import { Guard } from 'to-typed';
+import { Convert, Guard } from 'to-typed';
 import cp from 'child_process';
 export var Server;
 (function (Server) {
@@ -22,7 +22,7 @@ export var Server;
             cp.exec(`hsc ${config.hsc} --edit --open-unsafe-project port=${config.port}`);
     }
     Server.startServer = startServer;
-    async function get(name, parse, callback) {
+    function get(name, parse, callback) {
         return app.get(`/${name}`, async function (req, res) {
             const s = parse.cast(req.query).elseThrow(() => new Error('Invalid query: ' + req.query));
             const t = await callback(s);
@@ -38,4 +38,5 @@ export var Server;
         });
     }
     Server.post = post;
+    Server.noInput = Convert.id.map(() => ({}));
 })(Server || (Server = {}));
