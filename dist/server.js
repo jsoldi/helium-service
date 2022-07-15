@@ -24,17 +24,13 @@ export var Server;
     Server.startServer = startServer;
     function get(name, parse, callback) {
         return app.get(`/${name}`, async function (req, res) {
-            const s = parse.cast(req.query).elseThrow(() => new Error('Invalid query: ' + req.query));
-            const t = await callback(s);
-            return res.json(t);
+            return parse.cast(req.query).read(async (value) => res.json(await callback(value)), async () => res.status(400).send('Invalid query'));
         });
     }
     Server.get = get;
     function post(name, parse, callback) {
         return app.post(`/${name}`, async function (req, res) {
-            const s = parse.cast(req.body).elseThrow(() => new Error('Invalid body: ' + req.query));
-            const t = await callback(s);
-            return res.json(t);
+            return parse.cast(req.body).read(async (value) => res.json(await callback(value)), async () => res.status(400).send('Invalid post body'));
         });
     }
     Server.post = post;
