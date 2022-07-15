@@ -1,4 +1,4 @@
-interface Endpoint<N extends string = string, I extends object = {}, O extends object = {}> {
+interface Endpoint<in out N extends string = string, in out I extends object = {}, in out O extends object = {}> {
     readonly name: N
     readonly in: I
     readonly out: O

@@ -6,6 +6,8 @@ import { Cast, Convert, Guard } from 'to-typed';
 import cp from 'child_process';
 
 export namespace Server {
+    type Callback<E extends Endpoint> = (value: E['in']) => Promise<E['out']>
+
     const configType = Guard.is({ 
         hsc: '',
         launchHelium: false,
@@ -26,20 +28,22 @@ export namespace Server {
         if (config.launchHelium)
             cp.exec(`hsc ${config.hsc} --edit --open-unsafe-project port=${config.port}`)
     }
-    
-    export async function get<E extends Endpoint>(name: E['name'], parse: Convert<E['in']>, callback: (value: E['in']) => Promise<E['out']>) {
+
+    export function get<E extends Endpoint>(name: E['name'], parse: Cast<E['in']>, callback: Callback<E>) {
         return app.get(`/${name}`, async function (req, res) {
             const s = parse.cast(req.query).elseThrow(() => new Error('Invalid query: ' + req.query));
-            const t = await callback(s);
+            const t = await callback!(s);
             return res.json(t);
         });
     }
     
-    export function post<E extends Endpoint>(name: string, parse: Convert<E['in']>, callback: (value: E['in']) => Promise<E['out']>) {
+    export function post<E extends Endpoint>(name: E['name'], parse: Cast<E['in']>, callback: Callback<E>) {
         return app.post(`/${name}`, async function (req, res) {
             const s = parse.cast(req.body).elseThrow(() => new Error('Invalid body: ' + req.query));
-            const t = await callback(s);
+            const t = await callback!(s);
             return res.json(t);
         });
     }
+
+    export const noInput = Convert.id.map(() => ({}));
 }
