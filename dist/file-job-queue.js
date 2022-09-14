@@ -16,7 +16,7 @@ export class FileJobQueue {
             if (data.length) {
                 const job = data.shift();
                 await file.write(data);
-                return job;
+                return { id: undefined, task: job };
             }
         });
     }
@@ -34,10 +34,12 @@ export class FileJobMonitor {
         return Math.max(0, ...data.map(job => job.id)) + 1;
     }
     async enqueue(task) {
-        await this.file.update(data => {
+        return await this.file.use(async (file) => {
+            const data = await file.read();
             const id = this.getNextId(data);
             data.push({ id, status: 'pending', task });
-            return data;
+            await file.write(data);
+            return id;
         });
     }
     async dequeue() {
@@ -48,7 +50,7 @@ export class FileJobMonitor {
                 if (job) {
                     job.status = 'running';
                     await file.write(data);
-                    return job.task;
+                    return { id: job.id, task: job.task };
                 }
             }
         });

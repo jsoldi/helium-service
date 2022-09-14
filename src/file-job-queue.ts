@@ -1,9 +1,8 @@
 import { JobQueue } from "./assigner";
-import fs from 'fs';
-import { Cast, Guard, Maybe } from "to-typed";
+import { Cast, Guard } from "to-typed";
 import { TypedJsonFile } from 'json-to-typed'
 
-export class FileJobQueue<T> implements JobQueue<T> {
+export class FileJobQueue<T> implements JobQueue<T, void> {
     private readonly file: TypedJsonFile<T[]>
 
     constructor(path: string, itemCast: Cast<T>) { 
@@ -17,14 +16,14 @@ export class FileJobQueue<T> implements JobQueue<T> {
         })
     }
 
-    async dequeue(): Promise<T | undefined> {
+    async dequeue(): Promise<{ id: void, task: T } | undefined> {
         return await this.file.use(async file => {
             const data = await file.read();
 
             if (data.length) {
-                const job = data.shift();
+                const job = data.shift()!;
                 await file.write(data);
-                return job;
+                return { id: undefined, task: job };
             }
         })
     }
@@ -37,7 +36,7 @@ interface MonitorJob<T, R> {
     task: T
 }
 
-export class FileJobMonitor<T, R> implements JobQueue<T> {
+export class FileJobMonitor<T, R> implements JobQueue<T, number> {
     private readonly file: TypedJsonFile<MonitorJob<T, R>[]>
 
     constructor(path: string, itemCast: Cast<T>, resultCast: Cast<R>) {
@@ -53,15 +52,17 @@ export class FileJobMonitor<T, R> implements JobQueue<T> {
         return Math.max(0, ...data.map(job => job.id)) + 1;
     }
 
-    async enqueue(task: T): Promise<void> {
-        await this.file.update(data => {
+    async enqueue(task: T): Promise<number> {
+        return await this.file.use(async file => {
+            const data = await file.read();
             const id = this.getNextId(data);
             data.push({ id, status: 'pending', task });
-            return data;
+            await file.write(data);
+            return id;
         })
     }
 
-    async dequeue(): Promise<T | undefined> {
+    async dequeue(): Promise<{ id: number, task: T } | undefined> {
         return await this.file.use(async file => {
             const data = await file.read();
 
@@ -71,7 +72,7 @@ export class FileJobMonitor<T, R> implements JobQueue<T> {
                 if (job) {
                     job.status = 'running';
                     await file.write(data);
-                    return job.task;
+                    return { id: job.id, task: job.task };
                 }
             }
         })

@@ -5,16 +5,16 @@ interface Task<T> {
     expired: boolean
 }
 
-export interface JobQueue<T> {
-    enqueue(task: T): Promise<void>
-    dequeue(): Promise<T | undefined>
+export interface JobQueue<T, ID> {
+    enqueue(task: T): Promise<ID>
+    dequeue(): Promise<{ id: ID, task: T } | undefined>
 }
 
-export class Assigner<T> {
+export class Assigner<T, ID> {
     private updateRequired = true;
-    private readonly workers: Task<T>[] = [];
+    private readonly workers: Task<{ id: ID, task: T }>[] = [];
 
-    constructor(private readonly jobs: JobQueue<T>) { 
+    constructor(private readonly jobs: JobQueue<T, ID>) { 
         this.updateLoop();
     }
 
@@ -55,12 +55,13 @@ export class Assigner<T> {
     }
 
     async addJob(job: T) {
-        await this.jobs.enqueue(job);
+        const id = await this.jobs.enqueue(job);
         this.updateRequired = true;
+        return id;
     }
 
     async getWork(timeout: number) {
-        return await new Promise<Maybe<T>>(async (resolve) => {
+        return await new Promise<Maybe<{ id: ID, task: T }>>(async (resolve) => {
             const task = { resolve, expired: false };
             this.workers.push(task);
             this.updateRequired = true;

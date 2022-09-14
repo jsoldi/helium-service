@@ -36,8 +36,9 @@ export class Assigner {
         return new Promise(resolve => setTimeout(() => resolve(), ms));
     }
     async addJob(job) {
-        await this.jobs.enqueue(job);
+        const id = await this.jobs.enqueue(job);
         this.updateRequired = true;
+        return id;
     }
     async getWork(timeout) {
         return await new Promise(async (resolve) => {
