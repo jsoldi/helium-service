@@ -15,8 +15,15 @@ export namespace Server {
     });
     
     const app = express();
-    app.get('/index.html', express.static('./index.html'));
+
+    app.get('/index.html', (req, res) => {
+        // return with plain html:
+        const html = `<html><body><h1>Hello World</h1></body></html>`;
+        res.send(html);
+    });
+
     app.use(express.json());
+
 
     function castParse<T>(cast: Cast<T>, value: string): T {
         return cast.cast(JSON.parse(value)).elseThrow(() => new Error('Invalid JSON: ' + value));
