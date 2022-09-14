@@ -11,16 +11,13 @@ export var Server;
         port: 0
     });
     const app = express();
-    app.get('/index.html', async (req, res) => {
+    app.get('/index.html', async (_req, res) => {
         try {
-            // try get html from ./index.html file
             const html = await fs.readFile('./index.html', 'utf8');
             res.send(html);
         }
         catch (e) {
-            const currentFolder = process.cwd();
-            const html = `<html><body><pre>${currentFolder}</pre></body></html>`;
-            return res.send(html);
+            res.status(404).send('Not found');
         }
     });
     app.use(express.json());
