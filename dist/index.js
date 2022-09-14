@@ -1,6 +1,6 @@
 export { Server } from './server.js';
 export { Assigner } from './assigner.js';
-export { FileJobQueue } from './file-job-queue.js';
+export { FileJobQueue, FileJobMonitor } from './file-job-queue.js';
 // import { Convert, Guard, Maybe } from "to-typed"
 // import { Api } from "./api.js"
 // import { Assigner } from "./assigner.js";
