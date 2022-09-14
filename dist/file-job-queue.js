@@ -1,52 +1,66 @@
-import fs from 'fs';
-import { Cast, Maybe } from "to-typed";
+import { Cast } from "to-typed";
+import { TypedJsonFile } from 'json-to-typed';
 export class FileJobQueue {
     constructor(path, itemCast) {
-        this.path = path;
-        this.cast = Cast.asArrayOf(itemCast);
+        this.file = new TypedJsonFile(path, Cast.asArrayOf(itemCast).else([]));
     }
-    readFile() {
-        try {
-            return fs.readFileSync(this.path, 'utf8');
-        }
-        catch (e) {
-            if (e?.code === 'ENOENT')
-                return '[]';
-            else
-                throw e;
-        }
+    async enqueue(task) {
+        await this.file.update(data => {
+            data.push(task);
+            return data;
+        });
     }
-    writeFile(data) {
-        fs.writeFileSync(this.path, JSON.stringify(data, null, 2));
+    async dequeue() {
+        return await this.file.use(async (file) => {
+            const data = await file.read();
+            if (data.length) {
+                const job = data.shift();
+                await file.write(data);
+                return job;
+            }
+        });
     }
-    castParse() {
-        try {
-            const json = this.readFile();
-            return this.cast.cast(JSON.parse(json));
-        }
-        catch (e) {
-            return Maybe.nothing();
-        }
+}
+export class FileJobMonitor {
+    constructor(path, itemCast) {
+        this.file = new TypedJsonFile(path, Cast.asArrayOf(Cast.as({
+            id: Cast.asNumber,
+            status: Cast.asEnum('pending', 'running', 'completed', 'failed'),
+            task: itemCast
+        })).else([]));
     }
-    enqueue(task) {
-        const maybe = this.castParse();
-        if (maybe.hasValue) {
-            maybe.value.push(task);
-            this.writeFile(maybe.value);
-        }
-        else
-            console.log('Could not parse file job data');
-        return Promise.resolve();
+    getNextId(data) {
+        return Math.max(0, ...data.map(job => job.id)) + 1;
     }
-    dequeue() {
-        const maybe = this.castParse();
-        if (maybe.hasValue) {
-            const job = maybe.value.shift();
-            this.writeFile(maybe.value);
-            return Promise.resolve(job);
-        }
-        else
-            console.log('Could not parse file job data');
-        return Promise.resolve(undefined);
+    async enqueue(task) {
+        await this.file.update(data => {
+            const id = this.getNextId(data);
+            data.push({ id, status: 'pending', task });
+            return data;
+        });
+    }
+    async dequeue() {
+        return await this.file.use(async (file) => {
+            const data = await file.read();
+            if (data.length) {
+                const job = data.find(job => job.status === 'pending');
+                if (job) {
+                    job.status = 'running';
+                    await file.write(data);
+                    return job.task;
+                }
+            }
+        });
+    }
+    async complete(taskId, status = 'completed') {
+        await this.file.update(data => {
+            const job = data.find(job => job.id === taskId);
+            if (job)
+                job.status = status;
+            return data;
+        });
+    }
+    async read() {
+        return await this.file.read();
     }
 }

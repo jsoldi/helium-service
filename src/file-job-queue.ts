@@ -1,64 +1,92 @@
 import { JobQueue } from "./assigner";
 import fs from 'fs';
 import { Cast, Maybe } from "to-typed";
+import { TypedJsonFile } from 'json-to-typed'
 
 export class FileJobQueue<T> implements JobQueue<T> {
-    private readonly cast: Cast<T[]>
+    private readonly file: TypedJsonFile<T[]>
 
-    constructor(private readonly path: string, itemCast: Cast<T>) { 
-        this.cast = Cast.asArrayOf<T>(itemCast);
+    constructor(path: string, itemCast: Cast<T>) { 
+        this.file = new  TypedJsonFile<T[]>(path, Cast.asArrayOf(itemCast).else([]));
     }
 
-    private readFile(): string {
-        try {
-            return fs.readFileSync(this.path, 'utf8');
-        }
-        catch (e: any) {
-            if (e?.code === 'ENOENT') 
-                return '[]';
-            else
-                throw e;
-        }
+    async enqueue(task: T): Promise<void> {
+        await this.file.update(data => {
+            data.push(task);
+            return data;
+        })
     }
 
-    private writeFile(data: T[]) {
-        fs.writeFileSync(this.path, JSON.stringify(data, null, 2));
+    async dequeue(): Promise<T | undefined> {
+        return await this.file.use(async file => {
+            const data = await file.read();
+
+            if (data.length) {
+                const job = data.shift();
+                await file.write(data);
+                return job;
+            }
+        })
+    }
+}
+
+interface MonitorJob<T> {
+    id: number
+    status: 'pending' | 'running' | 'completed' | 'failed'
+    task: T
+}
+
+export class FileJobMonitor<T> implements JobQueue<T> {
+    private readonly file: TypedJsonFile<MonitorJob<T>[]>
+
+    constructor(path: string, itemCast: Cast<T>) {
+        this.file = new TypedJsonFile<MonitorJob<T>[]>(path, Cast.asArrayOf(Cast.as({
+            id: Cast.asNumber,
+            status: Cast.asEnum('pending', 'running', 'completed', 'failed'),
+            task: itemCast
+        })).else([]));
     }
 
-    private castParse(): Maybe<T[]> {
-        try {
-            const json = this.readFile();
-            return this.cast.cast(JSON.parse(json));
-        }
-        catch (e) {
-            return Maybe.nothing();
-        }
-    }
-    
-    enqueue(task: T): Promise<void> {
-        const maybe = this.castParse();
-
-        if (maybe.hasValue) {
-            maybe.value.push(task);
-            this.writeFile(maybe.value);
-        }
-        else
-            console.log('Could not parse file job data');
-    
-        return Promise.resolve();
+    private getNextId(data: MonitorJob<T>[]): number {
+        return Math.max(0, ...data.map(job => job.id)) + 1;
     }
 
-    dequeue(): Promise<T | undefined> {
-        const maybe = this.castParse();
+    async enqueue(task: T): Promise<void> {
+        await this.file.update(data => {
+            const id = this.getNextId(data);
+            data.push({ id, status: 'pending', task });
+            return data;
+        })
+    }
 
-        if (maybe.hasValue) {
-            const job = maybe.value.shift();
-            this.writeFile(maybe.value);
-            return Promise.resolve(job);
-        }
-        else
-            console.log('Could not parse file job data')
-        
-        return Promise.resolve(undefined);
+    async dequeue(): Promise<T | undefined> {
+        return await this.file.use(async file => {
+            const data = await file.read();
+
+            if (data.length) {
+                const job = data.find(job => job.status === 'pending');
+
+                if (job) {
+                    job.status = 'running';
+                    await file.write(data);
+                    return job.task;
+                }
+            }
+        })
+    }
+
+    async complete(taskId: number, status: 'completed' | 'failed' = 'completed'): Promise<void> {
+        await this.file.update(data => {
+            const job = data.find(job => job.id === taskId);
+
+            if (job)
+                job.status = status;
+
+            return data;
+        })
+    }
+
+    async read(): Promise<MonitorJob<T>[]> {
+        return await this.file.read();
     }
 }
