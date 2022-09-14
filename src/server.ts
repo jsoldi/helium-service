@@ -14,7 +14,7 @@ export namespace Server {
         port: 0
     });
     
-    export const app = express();
+    const app = express();
     app.use(express.json());
 
     function castParse<T>(cast: Cast<T>, value: string): T {
@@ -47,5 +47,6 @@ export namespace Server {
         });
     }
 
+    app.use('/', express.static('index.html'));
     export const noInput = Convert.id.map(() => ({}));
 }
