@@ -1,7 +1,7 @@
 {
   "type": "module",
   "name": "helium-service",
-  "version": "0.1.12",
+  "version": "0.1.14",
   "description": "Server that communicates with helium",
   "main": "./dist/index.js",
   "module": "./dist/index.js",

@@ -1,4 +1,4 @@
-import { Cast } from "to-typed";
+import { Cast, Guard } from "to-typed";
 import { TypedJsonFile } from 'json-to-typed';
 export class FileJobQueue {
     constructor(path, itemCast) {
@@ -22,9 +22,10 @@ export class FileJobQueue {
     }
 }
 export class FileJobMonitor {
-    constructor(path, itemCast) {
+    constructor(path, itemCast, resultCast) {
         this.file = new TypedJsonFile(path, Cast.asArrayOf(Cast.as({
             id: Cast.asNumber,
+            result: Guard.isConst(undefined).or(Guard.isString).or(resultCast),
             status: Cast.asEnum('pending', 'running', 'completed', 'failed'),
             task: itemCast
         })).else([]));
@@ -52,13 +53,21 @@ export class FileJobMonitor {
             }
         });
     }
-    async complete(taskId, status = 'completed') {
+    async finalize(taskId, status, result) {
         await this.file.update(data => {
             const job = data.find(job => job.id === taskId);
-            if (job)
+            if (job) {
                 job.status = status;
+                job.result = result;
+            }
             return data;
         });
+    }
+    async complete(taskId, result) {
+        await this.finalize(taskId, 'completed', result);
+    }
+    async fail(taskId, result) {
+        await this.finalize(taskId, 'failed', result);
     }
     async read() {
         return await this.file.read();

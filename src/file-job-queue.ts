@@ -1,6 +1,6 @@
 import { JobQueue } from "./assigner";
 import fs from 'fs';
-import { Cast, Maybe } from "to-typed";
+import { Cast, Guard, Maybe } from "to-typed";
 import { TypedJsonFile } from 'json-to-typed'
 
 export class FileJobQueue<T> implements JobQueue<T> {
@@ -30,24 +30,26 @@ export class FileJobQueue<T> implements JobQueue<T> {
     }
 }
 
-interface MonitorJob<T> {
+interface MonitorJob<T, R> {
     id: number
     status: 'pending' | 'running' | 'completed' | 'failed'
+    result?: string | R,
     task: T
 }
 
-export class FileJobMonitor<T> implements JobQueue<T> {
-    private readonly file: TypedJsonFile<MonitorJob<T>[]>
+export class FileJobMonitor<T, R> implements JobQueue<T> {
+    private readonly file: TypedJsonFile<MonitorJob<T, R>[]>
 
-    constructor(path: string, itemCast: Cast<T>) {
-        this.file = new TypedJsonFile<MonitorJob<T>[]>(path, Cast.asArrayOf(Cast.as({
+    constructor(path: string, itemCast: Cast<T>, resultCast: Cast<R>) {
+        this.file = new TypedJsonFile<MonitorJob<T, R>[]>(path, Cast.asArrayOf(Cast.as({
             id: Cast.asNumber,
+            result: Guard.isConst(undefined).or(Guard.isString).or(resultCast),
             status: Cast.asEnum('pending', 'running', 'completed', 'failed'),
             task: itemCast
         })).else([]));
     }
 
-    private getNextId(data: MonitorJob<T>[]): number {
+    private getNextId(data: MonitorJob<T, R>[]): number {
         return Math.max(0, ...data.map(job => job.id)) + 1;
     }
 
@@ -75,18 +77,28 @@ export class FileJobMonitor<T> implements JobQueue<T> {
         })
     }
 
-    async complete(taskId: number, status: 'completed' | 'failed' = 'completed'): Promise<void> {
+    private async finalize(taskId: number, status: 'completed' | 'failed', result?: string | R): Promise<void> {
         await this.file.update(data => {
             const job = data.find(job => job.id === taskId);
 
-            if (job)
+            if (job) {
                 job.status = status;
+                job.result = result;
+            }
 
             return data;
         })
     }
 
-    async read(): Promise<MonitorJob<T>[]> {
+    async complete(taskId: number, result: R): Promise<void> {
+        await this.finalize(taskId, 'completed', result);
+    }
+
+    async fail(taskId: number, result: string): Promise<void> {
+        await this.finalize(taskId, 'failed', result);
+    }
+
+    async read(): Promise<MonitorJob<T, R>[]> {
         return await this.file.read();
     }
 }
