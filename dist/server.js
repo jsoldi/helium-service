@@ -34,6 +34,6 @@ export var Server;
         });
     }
     Server.post = post;
-    app.use('/', express.static('index.html'));
+    app.use('/', express.static('./index.html'));
     Server.noInput = Convert.id.map(() => ({}));
 })(Server || (Server = {}));

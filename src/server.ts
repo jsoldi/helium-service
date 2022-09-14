@@ -47,6 +47,6 @@ export namespace Server {
         });
     }
 
-    app.use('/', express.static('index.html'));
+    app.use('/', express.static('./index.html'));
     export const noInput = Convert.id.map(() => ({}));
 }
