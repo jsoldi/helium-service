@@ -11,7 +11,7 @@ export var Server;
         port: 0
     });
     const app = express();
-    app.use('/index.html', express.static('./index.html'));
+    app.get('/index.html', express.static('./index.html'));
     app.use(express.json());
     function castParse(cast, value) {
         return cast.cast(JSON.parse(value)).elseThrow(() => new Error('Invalid JSON: ' + value));
