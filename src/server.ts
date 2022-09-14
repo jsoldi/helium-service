@@ -14,7 +14,7 @@ export namespace Server {
         port: 0
     });
     
-    const app = express();
+    export const app = express();
     app.use(express.json());
 
     function castParse<T>(cast: Cast<T>, value: string): T {
