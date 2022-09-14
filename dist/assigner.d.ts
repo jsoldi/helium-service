@@ -6,10 +6,10 @@ export interface JobQueue<T> {
 export declare class Assigner<T> {
     private readonly jobs;
     private updateRequired;
-    private readonly tasks;
+    private readonly workers;
     constructor(jobs: JobQueue<T>);
     private updateLoop;
     private static delay;
     addJob(job: T): Promise<void>;
-    doWork(timeout: number): Promise<Maybe<T>>;
+    getWork(timeout: number): Promise<Maybe<T>>;
 }
