@@ -78,7 +78,7 @@ export class FileJobMonitor<T, R> implements JobQueue<T, number> {
         })
     }
 
-    private async finalize(taskId: number, status: 'completed' | 'failed', result?: string | R): Promise<void> {
+    private async finalize(taskId: number, status: 'completed' | 'failed', result: string | R): Promise<void> {
         await this.file.update(data => {
             const job = data.find(job => job.id === taskId);
 

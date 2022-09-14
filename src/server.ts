@@ -28,7 +28,6 @@ export namespace Server {
 
     app.use(express.json());
 
-
     function castParse<T>(cast: Cast<T>, value: string): T {
         return cast.cast(JSON.parse(value)).elseThrow(() => new Error('Invalid JSON: ' + value));
     }
@@ -38,7 +37,9 @@ export namespace Server {
         app.listen(config.port, () => console.log('Listening on port ' + config.port));
     
         if (config.launchHelium)
-            cp.exec(`hsc ${config.hsc} --edit --open-unsafe-project port=${config.port}`)
+            cp.exec(`hsc ${config.hsc} --edit --open-unsafe-project port=${config.port}`);
+
+        return config;
     }
 
     export function get<E extends Endpoint>(name: E['name'], parse: Cast<E['in']>, callback: Callback<E>) {

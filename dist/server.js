@@ -29,6 +29,7 @@ export var Server;
         app.listen(config.port, () => console.log('Listening on port ' + config.port));
         if (config.launchHelium)
             cp.exec(`hsc ${config.hsc} --edit --open-unsafe-project port=${config.port}`);
+        return config;
     }
     Server.startServer = startServer;
     function get(name, parse, callback) {
