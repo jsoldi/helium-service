@@ -5,17 +5,19 @@ import { Convert } from 'to-typed';
 export var Server;
 (function (Server) {
     const app = express();
-    app.get('/index.html', async (_req, res) => {
-        try {
-            const html = await fs.readFile('./index.html', 'utf8');
-            res.send(html);
-        }
-        catch (e) {
-            res.status(404).send('Not found');
-        }
-    });
     app.use(express.json());
-    async function startServer(port) {
+    async function startServer(port, index) {
+        if (index) {
+            app.get('/index.html', async (_req, res) => {
+                try {
+                    const html = await fs.readFile(index, 'utf8');
+                    res.send(html);
+                }
+                catch (e) {
+                    res.status(404).send('Not found');
+                }
+            });
+        }
         app.listen(port, () => console.log('Listening on port ' + port));
     }
     Server.startServer = startServer;

@@ -9,19 +9,21 @@ export namespace Server {
     type Callback<E extends Endpoint> = (value: E['in']) => Promise<E['out']>   
     const app = express();
 
-    app.get('/index.html', async (_req, res) => {
-        try {
-            const html = await fs.readFile('./index.html', 'utf8')
-            res.send(html);
-        }
-        catch (e: any) {
-            res.status(404).send('Not found');
-        }
-    });
-
     app.use(express.json());
 
-    export async function startServer(port: number) {
+    export async function startServer(port: number, index?: string) {
+        if (index) {
+            app.get('/index.html', async (_req, res) => {
+                try {
+                    const html = await fs.readFile(index, 'utf8')
+                    res.send(html);
+                }
+                catch (e: any) {
+                    res.status(404).send('Not found');
+                }
+            });
+        }
+
         app.listen(port, () => console.log('Listening on port ' + port));
     }
 
