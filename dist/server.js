@@ -4,11 +4,11 @@ import fs from 'fs/promises';
 import { Convert } from 'to-typed';
 export var Server;
 (function (Server) {
-    const app = express();
-    app.use(express.json());
+    Server.app = express();
+    Server.app.use(express.json());
     async function startServer(port, index) {
         if (index) {
-            app.get('/index.html', async (_req, res) => {
+            Server.app.get('/index.html', async (_req, res) => {
                 try {
                     const html = await fs.readFile(index, 'utf8');
                     res.send(html);
@@ -18,17 +18,17 @@ export var Server;
                 }
             });
         }
-        app.listen(port, () => console.log('Listening on port ' + port));
+        Server.app.listen(port, () => console.log('Listening on port ' + port));
     }
     Server.startServer = startServer;
     function get(name, parse, callback) {
-        return app.get(`/${name}`, async function (req, res) {
+        return Server.app.get(`/${name}`, async function (req, res) {
             return parse.cast(req.query).read(async (value) => res.json(await callback(value)), async () => res.status(400).send('Invalid query'));
         });
     }
     Server.get = get;
     function post(name, parse, callback) {
-        return app.post(`/${name}`, async function (req, res) {
+        return Server.app.post(`/${name}`, async function (req, res) {
             return parse.cast(req.body).read(async (value) => res.json(await callback(value)), async () => res.status(400).send('Invalid post body'));
         });
     }

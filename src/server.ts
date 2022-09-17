@@ -7,7 +7,7 @@ import cp from 'child_process';
 
 export namespace Server {
     type Callback<E extends Endpoint> = (value: E['in']) => Promise<E['out']>   
-    const app = express();
+    export const app = express();
 
     app.use(express.json());
 
