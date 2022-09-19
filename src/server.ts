@@ -2,14 +2,12 @@
 
 import express from 'express';
 import fs from 'fs/promises';
-import { Cast, Convert, Guard } from 'to-typed';
-import cp from 'child_process';
+import { Cast, Convert } from 'to-typed';
 
 export namespace Server {
     type Callback<E extends Endpoint> = (value: E['in']) => Promise<E['out']>   
     export const app = express();
-
-    app.use(express.json());
+    app.use(express.json({ limit: '16mb' }));
 
     export async function startServer(port: number, index?: string) {
         if (index) {

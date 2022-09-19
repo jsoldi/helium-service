@@ -5,7 +5,7 @@ import { Convert } from 'to-typed';
 export var Server;
 (function (Server) {
     Server.app = express();
-    Server.app.use(express.json());
+    Server.app.use(express.json({ limit: '16mb' }));
     async function startServer(port, index) {
         if (index) {
             Server.app.get('/index.html', async (_req, res) => {
